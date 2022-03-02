@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::{self, Display};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -19,6 +21,23 @@ pub enum RoundParseError {
     BadLen,
     BadGuessChar,
 }
+
+impl Display for RoundParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                RoundParseError::MissingWord => "word missing",
+                RoundParseError::MissingGuesses => "guesses string missing",
+                RoundParseError::BadLen => "wrong length",
+                RoundParseError::BadGuessChar => "guess character should be G, Y or X",
+            }
+        )
+    }
+}
+
+impl Error for RoundParseError {}
 
 impl FromStr for Round {
     type Err = RoundParseError;

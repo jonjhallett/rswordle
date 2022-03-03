@@ -8,10 +8,13 @@ pub struct Round {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Guess {
-    Correct(char),
-    Present(char),
-    Missing(char),
+pub struct Guess(char, GuessResult);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum GuessResult {
+    Correct,
+    Present,
+    Missing,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -24,16 +27,13 @@ pub enum RoundParseError {
 
 impl Display for RoundParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                RoundParseError::MissingWord => "word missing",
-                RoundParseError::MissingGuesses => "guesses string missing",
-                RoundParseError::BadLen => "wrong length",
-                RoundParseError::BadGuessChar => "guess character should be G, Y or X",
-            }
-        )
+        let message = match self {
+            RoundParseError::MissingWord => "word missing",
+            RoundParseError::MissingGuesses => "guesses string missing",
+            RoundParseError::BadLen => "wrong length",
+            RoundParseError::BadGuessChar => "guess character should be G, Y or X",
+        };
+        write!(f, "{}", message)
     }
 }
 
@@ -56,9 +56,9 @@ impl FromStr for Round {
             .chars()
             .zip(guesses_str.chars())
             .map(|(word_char, guess_char)| match (word_char, guess_char) {
-                (word_char, 'G') => Ok(Guess::Correct(word_char)),
-                (word_char, 'Y') => Ok(Guess::Present(word_char)),
-                (word_char, 'X') => Ok(Guess::Missing(word_char)),
+                (ch, 'G') => Ok(Guess(ch, GuessResult::Correct)),
+                (ch, 'Y') => Ok(Guess(ch, GuessResult::Present)),
+                (ch, 'X') => Ok(Guess(ch, GuessResult::Missing)),
                 (_, _) => return Err(RoundParseError::BadGuessChar),
             })
             .collect();
@@ -75,11 +75,11 @@ fn test_round_from_str() {
         "terns=XYGXY".parse::<Round>(),
         Ok(Round {
             guesses: vec![
-                Guess::Missing('t'),
-                Guess::Present('e'),
-                Guess::Correct('r'),
-                Guess::Missing('n'),
-                Guess::Present('s')
+                Guess('t', GuessResult::Missing),
+                Guess('e', GuessResult::Present),
+                Guess('r', GuessResult::Correct),
+                Guess('n', GuessResult::Missing),
+                Guess('s', GuessResult::Present),
             ]
         })
     );
@@ -90,29 +90,31 @@ fn test_round_badlen() {
     assert_eq!("tern=XXXXX".parse::<Round>(), Err(RoundParseError::BadLen));
     assert_eq!("terns=XXXX".parse::<Round>(), Err(RoundParseError::BadLen));
     assert_eq!("terns".parse::<Round>(), Err(RoundParseError::BadLen));
-    assert_eq!(
-        "terns=XXXXX=foo".parse::<Round>(),
-        Err(RoundParseError::BadLen)
-    );
+    let res = "terns=XXXXX=foo".parse::<Round>();
+    assert_eq!(res, Err(RoundParseError::BadLen));
+    assert_eq!(res.unwrap_err().to_string(), "wrong length");
 }
 
 #[test]
 fn test_round_bad_guess_char() {
+    let res = "terns=XXXXA".parse::<Round>();
+    assert_eq!(res, Err(RoundParseError::BadGuessChar));
     assert_eq!(
-        "terns=XXXXA".parse::<Round>(),
-        Err(RoundParseError::BadGuessChar)
+        res.unwrap_err().to_string(),
+        "guess character should be G, Y or X"
     );
 }
 
 #[test]
 fn test_round_missing_word() {
-    assert_eq!("=XXXXX".parse::<Round>(), Err(RoundParseError::MissingWord));
+    let res = "=XXXXX".parse::<Round>();
+    assert_eq!(res, Err(RoundParseError::MissingWord));
+    assert_eq!(res.unwrap_err().to_string(), "word missing");
 }
 
 #[test]
 fn test_round_missing_guesses() {
-    assert_eq!(
-        "terns=".parse::<Round>(),
-        Err(RoundParseError::MissingGuesses)
-    );
+    let res = "terns=".parse::<Round>();
+    assert_eq!(res, Err(RoundParseError::MissingGuesses));
+    assert_eq!(res.unwrap_err().to_string(), "guesses string missing");
 }
